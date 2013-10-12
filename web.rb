@@ -2,5 +2,5 @@ require 'sinatra'
 require 'slim'
 
 get '/' do
-  "Hello World"
+  slim :index
 end
