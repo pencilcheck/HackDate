@@ -22,6 +22,7 @@
     <h1>Welcome {{user.email}}</h1>
     <a ui-sref="register">Register</a>
     <a ui-sref="login">Login</a>
+    <a ng-show="user" ui-sref="logout">Logout</a>
     <a ui-sref="profile">Profile</a>
     <div ui-view></div>
   </body>
