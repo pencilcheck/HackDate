@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html ng-app="hackdate">
+
+  <head>
+    <link rel="stylesheet" href="style.css" />
+    
+    <script data-require="jquery@2.0.3" data-semver="2.0.3" src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+    <link data-require="bootstrap@*" data-semver="3.0.0" rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" />
+    <script data-require="bootstrap@*" data-semver="3.0.0" src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    
+    <script data-require="angular.js@1.2.0-rc2" data-semver="1.2.0-rc2" src="http://code.angularjs.org/1.2.0-rc.2/angular.js"></script>
+    <script src="http://angular-ui.github.io/ui-router/release/angular-ui-router.min.js"></script>
+    
+    <script src="https://cdn.firebase.com/v0/firebase.js"></script>
+    <script src="https://cdn.firebase.com/v0/firebase-simple-login.js"></script>
+    <script src="https://cdn.firebase.com/libs/angularfire/0.3.0/angularfire.min.js"></script>
+    
+    <script src="script.js"></script>
+  </head>
+
+  <body ng-controller="MainCtrl">
+    <h1>Hello Plunker!</h1>
+    <a ui-sref="login">Login</a>
+    <div ui-view></div>
+  </body>
+
+</html>
+
