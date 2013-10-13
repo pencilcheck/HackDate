@@ -9,6 +9,8 @@
     <script data-require="bootstrap@*" data-semver="3.0.0" src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
     
     <script data-require="angular.js@1.2.0-rc2" data-semver="1.2.0-rc2" src="http://code.angularjs.org/1.2.0-rc.2/angular.js"></script>
+    <script data-require="angular-route@1.2.0-rc2" data-semver="1.2.0-rc2" src="http://code.angularjs.org/1.2.0-rc.2/angular-route.js"></script>
+    <script data-require="angular-resource@1.1.5" data-semver="1.1.5" src="http://code.angularjs.org/1.1.5/angular-resource.min.js"></script>
     <script src="http://angular-ui.github.io/ui-router/release/angular-ui-router.min.js"></script>
     
     <script src="https://cdn.firebase.com/v0/firebase.js"></script>
@@ -19,12 +21,15 @@
   </head>
 
   <body ng-controller="MainCtrl">
-    <h1>Welcome {{user.email}}</h1>
-    <a ui-sref="register">Register</a>
-    <a ui-sref="login">Login</a>
-    <a ng-show="user" ui-sref="logout">Logout</a>
-    <a ui-sref="profile">Profile</a>
-    <div ui-view></div>
+    <div class="container">
+      <h1>Welcome {{user.email}}</h1>
+      <a ui-sref="hackdate.register">Register</a>
+      <a ui-sref="hackdate.login">Login</a>
+      <a ng-show="user" ui-sref="hackdate.logout">Logout</a>
+      <a ui-sref="hackdate.profile">Profile</a>
+      <div ui-view></div>
+      <div ui-view="profiles"></div>
+    </div>
   </body>
 
 </html>

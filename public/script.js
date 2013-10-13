@@ -1,4 +1,11 @@
-var app = angular.module('hackdate', ['ui.router']);
+var app = angular.module('hackdate', ['ngRoute', 'ui.router', 'firebase']);
+
+app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
+
+app.factory('Profiles', function(angularFireCollection, hackDateURL) {
+  var ref = new Firebase(hackDateURL + 'profiles');
+  return angularFireCollection(ref);
+});
 
 app.config(function($stateProvider, $urlRouterProvider) {
   //
@@ -7,19 +14,33 @@ app.config(function($stateProvider, $urlRouterProvider) {
   //
   // Now set up the states
   $stateProvider
-    .state('register', {
+    .state('hackdate', {
+      views: {
+        '': {
+          templateUrl: 'partials/hackdate.html'
+        },
+        'profiles': {
+          templateUrl: 'partials/profiles.html',
+          controller: function($scope, angularFire, hackDateURL) {
+            var ref = new Firebase(hackDateURL + 'profiles');
+            $scope.profiles = [];
+            angularFire(ref, $scope, "profiles");
+          }
+        }
+      }
+    })
+    .state('hackdate.register', {
       url: "/register",
       templateUrl: "partials/register.html",
-      controller: function($scope) {
+      controller: function($scope, angularFireAuth) {
         $scope.user = {};
 
         $scope.register = function(registration) {
           $scope.user = angular.copy(registration);
-          console.log($scope.user);
-          $scope.auth.createUser($scope.user.email, $scope.user.password, function(error, user) {
+          angularFireAuth.createUser($scope.user.email, $scope.user.password, function(error, user) {
             if (!error) {
               console.log('User Id: ' + user.id + ', Email: ' + user.email);
-              $scope.auth.login('password', {
+              angularFireAuth.login('password', {
                 email: $scope.user.email,
                 password: $scope.user.password
               });
@@ -36,15 +57,15 @@ app.config(function($stateProvider, $urlRouterProvider) {
         $scope.reset();
       }
     })
-    .state('login', {
+    .state('hackdate.login', {
       url: "/login",
       templateUrl: "partials/login.html",
-      controller: function($scope) {
+      controller: function($scope, angularFireAuth) {
         $scope.user = {};
 
         $scope.login = function(loginuser) {
           $scope.user = angular.copy(loginuser);
-          $scope.auth.login('password', {
+          angularFireAuth.login('password', {
             email: $scope.user.email,
             password: $scope.user.password
           });
@@ -57,29 +78,54 @@ app.config(function($stateProvider, $urlRouterProvider) {
         $scope.reset();
       }
     })
-    .state('logout', {
+    .state('hackdate.logout', {
       url: "/logout",
-      controller: function($scope, $state) {
-        $scope.auth.logout();
-        $state.go('login');
+      controller: function($scope, $state, angularFireAuth) {
+        angularFireAuth.logout();
       }
     })
-    .state('profile', {
+    .state('hackdate.profile', {
       url: "/profile",
       templateUrl: "partials/profile.html",
-      controller: function($scope) {
-        // Not done
-        $scope.reset = function() {
-          $scope.profile = angular.copy($scope.user);
-        };
+      controller: function($scope, angularFire, hackDateURL, Profiles) {
+        console.log('accessing profile');
+        console.log($scope.user);
+        var profileUrl = hackDateURL + 'profiles/' + $scope.user.id;
+        var ref = new Firebase(profileUrl);
 
-        $scope.reset();
+        $scope.remote = {};
+        angularFire(ref, $scope, 'remote').
+        then(function() {
+          console.log('setting remote');
+          console.log($scope.remote);
+          $scope.profile = angular.copy($scope.remote);
+
+          $scope.update = function(profile) {
+            console.log('update');
+            $scope.remote = angular.copy(profile);
+            console.log($scope.remote);
+          };
+
+          $scope.reset = function() {
+            $scope.profile = {};
+          };
+        }, function(reason) {
+          console.log('error setting remote');
+          console.log(reason);
+
+          Profiles.add($scope.remote, function() {
+            console.log('going to profile after creating a profile');
+            $state.go('hackdate.profile');
+          });
+
+        }, function(notification) {
+          console.log(notification);
+        });
       }
     });
   });
 
-function MainCtrl($scope, $state) {
-  $scope.user = null;
+function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
   $scope.safeApply = function(fn) {
     var phase = this.$root.$$phase;
     if(phase == '$apply' || phase == '$digest') {
@@ -91,31 +137,33 @@ function MainCtrl($scope, $state) {
     }
   };
 
-  var chatRef = new Firebase('https://hackdate.firebaseio.com/');
-  $scope.auth = new FirebaseSimpleLogin(chatRef, function(error, user) {
-    if (error) {
-      // an error occurred while attempting login
-      console.log(error);
-    } else if (user) {
-      $scope.safeApply(function() {
-        $scope.user = user;
-      });
+  var hackDateRef = new Firebase(hackDateURL);
+  angularFireAuth.initialize(hackDateRef, {scope: $scope, name: "user"});
 
-      // user authenticated with Firebase
-      console.log('User ID: ' + user.id + ', Provider: ' + user.provider);
-      console.log($scope.user);
-    } else {
-      // user is logged out
-      $scope.safeApply(function() {
-        $scope.user = null;
-      });
-      console.log("User is logged out");
-    }
+  $scope.$on('angularFireAuth:login', function(evt, user) {
+    $scope.user = user;
+    $state.go('hackdate.profile');
   });
 
-  $scope.$watch('user', function(newVal) {
-    if(newVal && newVal.length != 0) {
-      $state.go('profile');
+  $scope.$on('angularFireAuth:logout', function(evt) {
+    $scope.user = null;
+    $state.go('hackdate.login');
+  });
+
+  $scope.$on('angularFireAuth:error', function(evt, err) {
+  });
+
+  $rootScope.$on('$stateChangeStart', 
+  function(event, toState, toParams, fromState, fromParams){ 
+    console.log('changing to state: ');
+    console.log(toState);
+    if(toState.name != 'hackdate.login' && toState.name != 'hackdate.register') {
+      if(!$scope.user) {
+        event.preventDefault();
+        // transitionTo() promise will be rejected with 
+        // a 'transition prevented' error
+        $state.go('hackdate.login');
+      }
     }
   });
 }
