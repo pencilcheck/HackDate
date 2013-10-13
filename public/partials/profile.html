@@ -4,10 +4,17 @@
   <div class="form-group">
     <label class="col-lg-2 control-label" for="profileName">Name:</label>
     <div class="col-lg-5">
-      <input type="text" class="form-control" id="profileName" placeholder="First name" ng-model="profile.first_name" />
+      <input type="text" class="form-control" id="profileName" placeholder="First name" ng-model="profile.first_name" ng-required="true" />
     </div>
     <div class="col-lg-5">
-      <input type="text" class="form-control" id="profileName" placeholder="Last name" ng-model="profile.last_name" />
+      <input type="text" class="form-control" id="profileName" placeholder="Last name" ng-model="profile.last_name" ng-required="true" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileAge">Age:</label>
+    <div class="col-lg-1">
+      <input type="text" class="form-control" id="profileAge" ng-model="profile.age" ng-required="true" />
     </div>
   </div>
 
@@ -20,12 +27,15 @@
 
   <div class="form-group">
     <label class="col-lg-2 control-label" for="profileBirthday">Birthday:</label>
-    <div class="col-lg-10">
+    <div class="col-lg-2">
 
       <!--<input type="text" datepicker-popup="dd-MMMM-yyyy" ng-model="profile.birthday" is-open="opened" ng-required="true" />-->
       <!--<button class="btn" ng-click="open()"><i class="icon-calendar"></i></button>-->
 
-      <datepicker ng-model="profile.birthday" show-weeks="false" ng-required="true"></datepicker>
+      <!--<datepicker ng-model="profile.birthday" show-weeks="false" ng-required="true"></datepicker>-->
+
+      <input type="text" class="form-control" ng-model="profile.birthday" data-date-format="dd/mm/yyyy" bs-datepicker />
+      </div>
     </div>
 
   <div class="form-group">

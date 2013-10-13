@@ -1,4 +1,4 @@
-var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase']);
+var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives']);
 
 app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
 
@@ -103,6 +103,12 @@ app.config(function($stateProvider, $urlRouterProvider) {
         console.log($scope.user);
         var profileUrl = hackDateURL + 'profiles/' + $scope.user.id;
         var ref = new Firebase(profileUrl);
+        
+        app.value('$strapConfig', {
+          datepicker: {
+            format: 'M d, yyyy'
+          }
+        });
 
         $scope.sexes = ['M', 'F'];
         $scope.relationship_status = ['Single', 'Married', 'Other'];
