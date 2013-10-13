@@ -1,11 +1,6 @@
 <h3>Profile</h3>
 <form novalidate role="form" class="form-horizontal">
-  <div class="form-group">
-    <label class="col-lg-2 control-label" for="profileEmail">Email:</label>
-    <div class="col-lg-10">
-      <input type="email" class="form-control" id="profileEmail" placeholder="Enter email" ng-model="profile.email" />
-    </div>
-  </div>
+
   <div class="form-group">
     <label class="col-lg-2 control-label" for="profileName">Name:</label>
     <div class="col-lg-5">
@@ -15,6 +10,97 @@
       <input type="text" class="form-control" id="profileName" placeholder="Last name" ng-model="profile.last_name" />
     </div>
   </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileSex">Sex:</label>
+    <div class="col-lg-10">
+      <select class="form-control" ng-model="profile.sex" ng-options="sex for sex in sexes" ng-required="true" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileBirthday">Birthday:</label>
+    <div class="col-lg-10">
+
+      <!--<input type="text" datepicker-popup="dd-MMMM-yyyy" ng-model="profile.birthday" is-open="opened" ng-required="true" />-->
+      <!--<button class="btn" ng-click="open()"><i class="icon-calendar"></i></button>-->
+
+      <datepicker ng-model="profile.birthday" show-weeks="false" ng-required="true"></datepicker>
+    </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileLocation">Location:</label>
+    <div class="col-lg-10">
+      <div class="input-group">
+        <input type="text" class="form-control" id="profileLocation" ng-model="profile.location" />
+        <span class="input-group-btn">
+          <button class="btn btn-default" ng-click="geolocate()">Find me</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileStatus">Relationship Status:</label>
+    <div class="col-lg-10">
+      <select class="form-control" ng-model="profile.relationship_status" ng-options="status for status in relationship_status" ng-required="true" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileStatus">Looking for:</label>
+    <div class="col-lg-10">
+      <select class="form-control" multiple="multiple" ng-model="profile.intention" ng-options="intention for intention in intentions" ng-required="true" />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileStatus">Skills/Expertise:</label>
+    <div class="col-lg-10">
+      <input type="text" name="skills" ng-model="profile.skills" selectize="({ plugins: ['restore_on_backspace', 'remove_button'], delimiter: ',', persist: false, create: (function(input){ return { value: input.charAt(0).toUpperCase()+input.slice(1), text: input.charAt(0).toUpperCase()+input.slice(1) } }) })">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label" for="profileLanguage">Languages:</label>
+    <div class="col-lg-10">
+      <input type="text" name="languages" ng-model="profile.languages" selectize="({ plugins: ['restore_on_backspace', 'remove_button'], delimiter: ',', persist: false, create: (function(input){ return { value: input.charAt(0).toUpperCase()+input.slice(1), text: input.charAt(0).toUpperCase()+input.slice(1) } }) })">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="col-lg-2 control-label">3 words that describe you:</label>
+    <div class="col-lg-10">
+      <div class="row">
+        <div class="col-lg-3">
+          <input type="text" class="form-control" ng-model="profile.headlight0" />
+        </div>
+        <div class="col-lg-3">
+          <input type="text" class="form-control" ng-model="profile.headlight1" />
+        </div>
+        <div class="col-lg-3">
+          <input type="text" class="form-control" ng-model="profile.headlight2" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group" ng-repeat="qa in profile.qas">
+    <label class="col-lg-2 control-label">
+      <button type="button" class="pull-left close" aria-hidden="true" ng-click="removeQuestion(qa)" ng-show="qa.type == 'user'">&times;</button>
+      {{qa.question}}:
+    </label>
+    <div class="col-lg-10">
+      <textarea class="form-control" rows="4" ng-model="qa.answer"></textarea>
+    </div>
+  </div>
+
+  <p>
+    <input type="text" class="form-control" placeholder="e.g. Does religion matter to you? Favorite travel spot?" ng-model="new_question">
+    <a class="btn" ng-click="addQuestion()">Add your own question & answer</a>
+  </p>
+
   <button class="btn btn-default" ng-click="reset()">Reset Me</button>
   <button class="btn btn-default" ng-click="update(profile)">SAVE</button>
+
 </form>
