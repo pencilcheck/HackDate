@@ -249,10 +249,18 @@ app.config(function($stateProvider, $urlRouterProvider) {
         });
       }
     })
-    .state('hackdate.interested', {
-      url: "/interested",
-      templateUrl: "partials/interested.html",
+    .state('hackdate.interests', {
+      url: "/interests",
+      templateUrl: "partials/interests.html",
       controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
+        // Shows all profiles that has the user can express interests to
+        var user_id = $scope.user.id;
+        var interestsUrl = hackDateURL+'profiles/'+user_id+'/interests';
+        var interestsRef = new Firebase(interestsUrl);
+
+        $scope.interests = [];
+        angularFire(interestsRef, $scope, 'interests');
+
         $scope.profiles = Profiles;
         $scope.selected = [];
         $scope.gridOptions = {
@@ -287,79 +295,209 @@ app.config(function($stateProvider, $urlRouterProvider) {
         };
 
         $scope.$on('ngGridEventData', function(){
-          console.log('ngGridEventData');
           _.each($scope.profiles, function(el, ind) {
-            var user_id = $scope.user.id;
-            var id = el.$id;
-            var url = hackDateURL+'profiles/'+user_id+'/interested';
-            console.log('user_id: ' + user_id);
-            console.log('target_id: ' + id);
+            var target_id = el.$id;
 
-            var ref = new Firebase(url);
-            ref.once('value', function(snapshot) {
-              if(snapshot.val() && snapshot.val().indexOf(id) > -1) {
-                $scope.gridOptions.selectRow(ind, true);
+            if($scope.interests.indexOf(target_id) > -1) {
+              $scope.gridOptions.selectRow(ind, true);
+            }
+          });
+        });
+
+        $scope.apply = function() {
+          var unselected = _.difference($scope.profiles, $scope.selected); 
+
+          _.each($scope.selected, function(el) {
+            var target_id = el.$id;
+
+            // Push target_id into interested list of current user
+            if($scope.interests.indexOf(target_id) < 0) {
+              $scope.interests.push(target_id);
+            }
+          });
+
+          _.each(unselected, function(el) {
+            var target_id = el.$id;
+
+            // Remove target_id from interested list of current user
+            var ind = $scope.interests.indexOf(target_id)
+            if(ind > -1) {
+              $scope.interests.splice(ind, 1);
+            }
+          });
+        };
+      }
+    })
+    .state('hackdate.interested', {
+      url: "/interested",
+      templateUrl: "partials/interested.html",
+      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
+        // Similar to interests, so users can express interests to, but only shows profiles that has expressed interests in the user
+        var user_id = $scope.user.id;
+        var interestsUrl = hackDateURL+'profiles/'+user_id+'/interests';
+        var interestsRef = new Firebase(interestsUrl);
+
+        $scope.interests = [];
+        angularFire(interestsRef, $scope, 'interests');
+
+        $scope.profiles = [];
+        $scope.remote = Profiles;
+        $scope.$watch('remote', function(newVal) {
+          var ref = new Firebase(hackDateURL + 'profiles/' + user_id);
+          ref.once('value', function(snapshot) {
+            var profile = snapshot.val();
+
+            $scope.profiles = _.filter(newVal, function(el) {
+              return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(el.$id) < 0;
+            });
+          });
+        });
+
+        $scope.selected = [];
+        $scope.gridOptions = {
+          data: 'profiles',
+          selectedItems: $scope.selected,
+          columnDefs: [
+            {
+              field: '$id',
+              displayName: 'ID'
+            },
+            {
+              field: 'first_name',
+              displayName: 'First Name'
+            },
+            {
+              field: 'last_name',
+              displayName: 'Last Name'
+            },
+            {
+              field: 'birthday',
+              displayName: 'Birthday'
+            },
+            {
+              field: 'qas[0].question',
+              displayName: 'Question'
+            },
+            {
+              field: 'qas[0].answer',
+              displayName: 'Answer'
+            }
+          ]
+        };
+
+        $scope.$on('ngGridEventData', function(){
+          _.each($scope.profiles, function(el, ind) {
+            var target_id = el.$id;
+
+            if($scope.interests.indexOf(target_id) > -1) {
+              $scope.gridOptions.selectRow(ind, true);
+            }
+          });
+        });
+
+        $scope.apply = function() {
+          var unselected = _.difference($scope.profiles, $scope.selected); 
+
+          _.each($scope.selected, function(el) {
+            var target_id = el.$id;
+
+            // Push target_id into interested list of current user
+            if($scope.interests.indexOf(target_id) < 0) {
+              $scope.interests.push(target_id);
+            }
+          });
+
+          _.each(unselected, function(el) {
+            var target_id = el.$id;
+
+            // Remove target_id from interested list of current user
+            var ind = $scope.interests.indexOf(target_id)
+            if(ind > -1) {
+              $scope.interests.splice(ind, 1);
+            }
+          });
+        };
+      }
+    })
+    .state('hackdate.hook_ups', {
+      url: "/hook_ups",
+      templateUrl: "partials/hook_ups.html",
+      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
+
+        var user_id = $scope.user.id;
+
+        var url = hackDateURL+'profiles/'+user_id+'/hook_ups';
+        var ref = new Firebase(url);
+        $scope.hookUps = [];
+        angularFire(ref, $scope, 'hookUps');
+
+        $scope.profiles = [];
+        var iRef = new Firebase(hackDateURL+'profiles/'+$scope.user.id+'/interests');
+        iRef.once('value', function(snapshot) {
+          var interests = snapshot.val();
+
+          _.each(interests, function(el) {
+            var ref = new Firebase(hackDateURL+'profiles/'+el);
+            angularFireCollection(ref, function(snapshot) {
+              var remote = snapshot.val();
+              console.log(remote);
+              _.extend(remote, {$id: parseInt(el)});
+              if(remote.interests.indexOf($scope.user.id) > -1) {
+                $scope.profiles.push(remote);
               }
             });
           });
         });
 
-        $scope.apply = function() {
-          $scope.unselected = _.difference($scope.profiles, $scope.selected); 
+        $scope.selected = [];
+        $scope.gridOptions = {
+          data: 'profiles',
+          selectedItems: $scope.selected,
+          columnDefs: [
+            {
+              field: '$id',
+              displayName: 'ID'
+            },
+            {
+              field: 'first_name',
+              displayName: 'First Name'
+            },
+            {
+              field: 'last_name',
+              displayName: 'Last Name'
+            }
+          ]
+        };
 
-
-          _.each($scope.unselected, function(el) {
+        $scope.$on('ngGridEventData', function(){
+          _.each($scope.profiles, function(el, ind) {
             var target_id = el.$id;
-            var user_id = $scope.user.id;
 
-            // Remove target_id from interested list of current user
-            var interestedUrl = hackDateURL+'profiles/'+user_id+'/interested';
-            var interestedRef = new Firebase(interestedUrl);
-            $scope.uninterested = [];
-            angularFire(interestedRef, $scope, 'uninterested').
-            then(function() {
-              var ind = $scope.uninterested.indexOf(target_id)
-              if(ind > -1) {
-                $scope.uninterested.splice(ind, 1);
-              }
-            });
+            if($scope.hookUps.indexOf(target_id) > -1) {
+              $scope.gridOptions.selectRow(ind, true);
+            }
+          });
+        });
 
-            // Remove unselected user id from interesting list of others
-            var interestingUrl = hackDateURL+'profiles/'+target_id+'/interesting';
-            var interestingRef = new Firebase(interestingUrl);
-            $scope.uninteresting = [];
-            angularFire(interestingRef, $scope, 'uninteresting').
-            then(function() {
-              var ind = $scope.uninteresting.indexOf(user_id);
-              if(ind > -1) {
-                $scope.uninteresting.slice(ind, 1);
-              }
-            });
+        $scope.hook = function() {
+          var unselected = _.difference($scope.profiles, $scope.selected); 
+
+          _.each(unselected, function(el) {
+            var target_id = el.$id;
+
+            var ind = $scope.hookUps.indexOf(target_id)
+            if(ind > -1) {
+              $scope.hookUps.splice(ind, 1);
+            }
           });
 
           _.each($scope.selected, function(el) {
             var target_id = el.$id;
-            var user_id = $scope.user.id;
 
-            // Push user id into interesting list of others
-            var ref = new Firebase(hackDateURL+'profiles/'+target_id+'/interesting');
-            $scope.interesting = [];
-            angularFire(ref, $scope, 'interesting').
-            then(function() {
-              if($scope.interesting.indexOf(user_id) < 0) {
-                $scope.interesting.push(user_id);
-              }
-            });
-
-            // Push target_id into interested list of current user
-            var ref = new Firebase(hackDateURL+'profiles/'+user_id+'/interested');
-            $scope.interested = [];
-            angularFire(ref, $scope, 'interested').
-            then(function() {
-              if($scope.interested.indexOf(target_id) < 0) {
-                $scope.interested.push(target_id);
-              }
-            });
+            console.log($scope.hookUps);
+            if($scope.hookUps.indexOf(target_id) < 0) {
+              $scope.hookUps.push(target_id);
+            }
           });
         };
       }
