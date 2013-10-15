@@ -1,0 +1,16 @@
+<div class="well">
+  <h2>Channels:</h2>
+  <ul>
+    <li ng-repeat="channel in channels" ng-click="select(channel)">{{channel.title}}</li>
+</div>
+<div class="well">
+  <div ng-cloak ng-repeat="message in messages">
+    <em>{{message.from}}: </em>{{message.content}}
+  </div><br/>
+  <form class="form-inline" ng-submit="addMessage()">
+    <input type="text" ng-model="message" placeholder="Message...">
+    <button class="btn" type="submit">
+      <i class="icon-reply"> Send</i>
+    </button>
+  </form>
+</div>

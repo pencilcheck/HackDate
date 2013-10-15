@@ -102,7 +102,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
       controller: function($scope, $http, $timeout, angularFire, hackDateURL, Profiles) {
         console.log('accessing profile');
         console.log($scope.user);
-        var profileUrl = hackDateURL + 'profiles/' + $scope.user.id;
+        var profileUrl = hackDateURL + 'profiles/' + parseInt($scope.user.id);
         var ref = new Firebase(profileUrl);
         
         app.value('$strapConfig', {
@@ -252,10 +252,6 @@ app.config(function($stateProvider, $urlRouterProvider) {
     })
     .state('hackdate.interests', {
       resolve: {
-        namespace: function() {
-          return 'interests'
-        },
-
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/interests'
@@ -302,10 +298,6 @@ app.config(function($stateProvider, $urlRouterProvider) {
     .state('hackdate.interested', {
       // Similar to interests, so users can express interests to, but only shows profiles that has expressed interests in the user
       resolve: {
-        namespace: function() {
-          return 'interests'
-        },
-
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/interests'
@@ -365,10 +357,6 @@ app.config(function($stateProvider, $urlRouterProvider) {
     })
     .state('hackdate.hook_ups', {
       resolve: {
-        namespace: function() {
-          return 'hook_ups'
-        },
-
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/hook_ups'
@@ -425,6 +413,84 @@ app.config(function($stateProvider, $urlRouterProvider) {
       url: "/hook_ups",
       templateUrl: "partials/hook_ups.html",
       controller: 'MatchingCtrl'
+    })
+    .state('hackdate.messages', {
+      url: "/messages",
+      templateUrl: "partials/messages.html",
+      controller: function($scope, angularFire, angularFireCollection, hackDateURL) {
+        var userId = parseInt($scope.user.id);
+        var userRef = new Firebase(hackDateURL+'/profiles/'+userId+'/first_name');
+        userRef.once('value', function(snapshot) {
+          $scope.username = snapshot.val();
+        });
+
+        $scope.globalChannels = {};
+        angularFire(new Firebase(hackDateURL+'/channels'), $scope, 'globalChannels');
+
+        $scope.channels = {};
+        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/channels'), $scope, 'channels');
+
+
+        $scope.hookUps = [];
+        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/hook_ups'), $scope, 'hookUps');
+
+        $scope.$watch('hookUps', function(newVal) {
+          // Making sure channels matches hook_ups
+          // Create channel if not and delete if removed
+
+          _.each($scope.hookUps, function(hookUp) {
+            hookUp = parseInt(hookUp);
+            //TODO: make sure both select each other first
+            if(true) {
+              var key = _.sortBy([hookUp, userId], function(el) {return el;});
+              if(!_.has($scope.globalChannels, key)) {
+                $scope.globalChannels[key] = {
+                  members: [hookUp, userId],
+                  messages: [
+                    {
+                      from: 'HackDate',
+                      content: 'Thanks for using HackDate! <3',
+                      admin: true
+                    }
+                  ]
+                };
+
+                angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
+                  key: key,
+                  title: 'Custom title'
+                });
+                angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
+                  key: key,
+                  title: 'Custom title'
+                });
+              }
+            }
+          });
+        });
+
+        $scope.select = function(channel) {
+          $scope.selected = channel;
+        }
+
+        $scope.$watch('selected', function(newVal) {
+          console.log('selected');
+          console.log(newVal);
+          var key = newVal.key;
+          var ref = new Firebase(hackDateURL+'/channels/'+key+'/messages');
+
+          $scope.messages = [];
+          angularFire(ref.limit(15), $scope, 'messages');
+
+          $scope.addMessage = function() {
+            $scope.messages.push({
+              from: $scope.username,
+              content: $scope.message,
+              admin: false
+            });
+            $scope.message = "";
+          }
+        });
+      }
     });
 });
 
@@ -445,7 +511,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
 
   $scope.$on('angularFireAuth:login', function(evt, user) {
     $scope.user = user;
-    $rootScope.userId = $scope.user.id;
+    $rootScope.userId = parseInt($scope.user.id);
     $state.go($scope.toState);
   });
 
@@ -477,7 +543,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     console.log(error);
   });
 })
-.controller('MatchingCtrl', function($scope, angularFire, angularFireCollection, interestsRef, profiles, columnDefs, namespace) {
+.controller('MatchingCtrl', function($scope, angularFire, angularFireCollection, interestsRef, profiles, columnDefs) {
 
   $scope.interests = [];
   $scope.profiles = profiles;
@@ -492,7 +558,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     _.each($scope.profiles, function(el, ind) {
       var target_id = el.$id;
 
-      angularFire(interestsRef, $scope, namespace).
+      angularFire(interestsRef, $scope, 'interests').
       then(function() {
         if($scope.interests.indexOf(target_id) > -1) {
           $scope.gridOptions.selectRow(ind, true);
