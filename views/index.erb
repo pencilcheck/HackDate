@@ -12,13 +12,13 @@
   <body ng-controller="MainCtrl">
     <div class="container">
       <h1>Welcome {{user.email}}</h1>
-      <a ui-sref="hackdate.register">Register</a>
-      <a ui-sref="hackdate.login">Login</a>
-      <a ng-show="user" ui-sref="hackdate.logout">Logout</a>
-      <a ui-sref="hackdate.profile">Profile</a>
-      <a ui-sref="hackdate.interests">Your Interests</a>
-      <a ui-sref="hackdate.interested">Interested in You</a>
-      <a ui-sref="hackdate.hook_ups">Your HookUps</a>
+      <a ui-sref="hackdate.register">Register</a> |
+      <a ui-sref="hackdate.login">Login</a> |
+      <a ng-show="user" ui-sref="hackdate.logout">Logout</a> |
+      <a ui-sref="hackdate.profile">Profile</a> |
+      <a ui-sref="hackdate.interests">Your Interests</a> |
+      <a ui-sref="hackdate.interested">Interested in You</a> |
+      <a ui-sref="hackdate.hook_ups">Your HookUps</a> |
       <a ui-sref="hackdate.messages">Messages</a>
       <div ui-view></div>
       <%#<div ui-view="profiles"></div>%>
