@@ -1,3 +1,4 @@
+var userId = -1;
 var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives', 'ngGrid']);
 
 app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
@@ -250,23 +251,23 @@ app.config(function($stateProvider, $urlRouterProvider) {
       }
     })
     .state('hackdate.interests', {
-      url: "/interests",
-      templateUrl: "partials/interests.html",
-      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
-        // Shows all profiles that has the user can express interests to
-        var user_id = $scope.user.id;
-        var interestsUrl = hackDateURL+'profiles/'+user_id+'/interests';
-        var interestsRef = new Firebase(interestsUrl);
+      resolve: {
+        namespace: function() {
+          return 'interests'
+        },
 
-        $scope.interests = [];
-        angularFire(interestsRef, $scope, 'interests');
+        interestsRef: function($rootScope, hackDateURL) {
+          var userId = $rootScope.userId; // $scope will trigger error
+          var url = hackDateURL+'profiles/'+userId+'/interests'
+          return new Firebase(url);
+        },
 
-        $scope.profiles = Profiles;
-        $scope.selected = [];
-        $scope.gridOptions = {
-          data: 'profiles',
-          selectedItems: $scope.selected,
-          columnDefs: [
+        profiles: function(Profiles) {
+          return Profiles;
+        },
+
+        columnDefs: function() {
+          return [
             {
               field: '$id',
               displayName: 'ID'
@@ -291,73 +292,46 @@ app.config(function($stateProvider, $urlRouterProvider) {
               field: 'qas[0].answer',
               displayName: 'Answer'
             }
-          ]
-        };
-
-        $scope.$on('ngGridEventData', function(){
-          _.each($scope.profiles, function(el, ind) {
-            var target_id = el.$id;
-
-            if($scope.interests.indexOf(target_id) > -1) {
-              $scope.gridOptions.selectRow(ind, true);
-            }
-          });
-        });
-
-        $scope.apply = function() {
-          var unselected = _.difference($scope.profiles, $scope.selected); 
-
-          _.each($scope.selected, function(el) {
-            var target_id = el.$id;
-
-            // Push target_id into interested list of current user
-            if($scope.interests.indexOf(target_id) < 0) {
-              $scope.interests.push(target_id);
-            }
-          });
-
-          _.each(unselected, function(el) {
-            var target_id = el.$id;
-
-            // Remove target_id from interested list of current user
-            var ind = $scope.interests.indexOf(target_id)
-            if(ind > -1) {
-              $scope.interests.splice(ind, 1);
-            }
-          });
-        };
-      }
+          ];
+        }
+      },
+      url: "/interests",
+      templateUrl: "partials/interests.html",
+      controller: 'MatchingCtrl'
     })
     .state('hackdate.interested', {
-      url: "/interested",
-      templateUrl: "partials/interested.html",
-      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
-        // Similar to interests, so users can express interests to, but only shows profiles that has expressed interests in the user
-        var user_id = $scope.user.id;
-        var interestsUrl = hackDateURL+'profiles/'+user_id+'/interests';
-        var interestsRef = new Firebase(interestsUrl);
+      // Similar to interests, so users can express interests to, but only shows profiles that has expressed interests in the user
+      resolve: {
+        namespace: function() {
+          return 'interests'
+        },
 
-        $scope.interests = [];
-        angularFire(interestsRef, $scope, 'interests');
+        interestsRef: function($rootScope, hackDateURL) {
+          var userId = $rootScope.userId; // $scope will trigger error
+          var url = hackDateURL+'profiles/'+userId+'/interests'
+          return new Firebase(url);
+        },
 
-        $scope.profiles = [];
-        $scope.remote = Profiles;
-        $scope.$watch('remote', function(newVal) {
-          var ref = new Firebase(hackDateURL + 'profiles/' + user_id);
+        profiles: function($rootScope, $q, angularFireCollection, hackDateURL) {
+          var deferred = $q.defer();
+          var userId = $rootScope.userId; // $scope will trigger error
+          var url = hackDateURL+'profiles/'+userId
+          var ref = new Firebase(url);
+
           ref.once('value', function(snapshot) {
             var profile = snapshot.val();
 
-            $scope.profiles = _.filter(newVal, function(el) {
-              return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(el.$id) < 0;
+            var profiles = angularFireCollection(new Firebase(hackDateURL+'profiles'), function() {
+              deferred.resolve(_.filter(profiles, function(el) {
+                return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(el.$id) < 0;
+              }));
             });
           });
-        });
+          return deferred.promise;
+        },
 
-        $scope.selected = [];
-        $scope.gridOptions = {
-          data: 'profiles',
-          selectedItems: $scope.selected,
-          columnDefs: [
+        columnDefs: function() {
+          return [
             {
               field: '$id',
               displayName: 'ID'
@@ -382,78 +356,57 @@ app.config(function($stateProvider, $urlRouterProvider) {
               field: 'qas[0].answer',
               displayName: 'Answer'
             }
-          ]
-        };
-
-        $scope.$on('ngGridEventData', function(){
-          _.each($scope.profiles, function(el, ind) {
-            var target_id = el.$id;
-
-            if($scope.interests.indexOf(target_id) > -1) {
-              $scope.gridOptions.selectRow(ind, true);
-            }
-          });
-        });
-
-        $scope.apply = function() {
-          var unselected = _.difference($scope.profiles, $scope.selected); 
-
-          _.each($scope.selected, function(el) {
-            var target_id = el.$id;
-
-            // Push target_id into interested list of current user
-            if($scope.interests.indexOf(target_id) < 0) {
-              $scope.interests.push(target_id);
-            }
-          });
-
-          _.each(unselected, function(el) {
-            var target_id = el.$id;
-
-            // Remove target_id from interested list of current user
-            var ind = $scope.interests.indexOf(target_id)
-            if(ind > -1) {
-              $scope.interests.splice(ind, 1);
-            }
-          });
-        };
-      }
+          ];
+        }
+      },
+      url: "/interested",
+      templateUrl: "partials/interested.html",
+      controller: 'MatchingCtrl'
     })
     .state('hackdate.hook_ups', {
-      url: "/hook_ups",
-      templateUrl: "partials/hook_ups.html",
-      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
+      resolve: {
+        namespace: function() {
+          return 'hook_ups'
+        },
 
-        var user_id = $scope.user.id;
+        interestsRef: function($rootScope, hackDateURL) {
+          var userId = $rootScope.userId; // $scope will trigger error
+          var url = hackDateURL+'profiles/'+userId+'/hook_ups'
+          return new Firebase(url);
+        },
 
-        var url = hackDateURL+'profiles/'+user_id+'/hook_ups';
-        var ref = new Firebase(url);
-        $scope.hookUps = [];
-        angularFire(ref, $scope, 'hookUps');
+        profiles: function($rootScope, $q, angularFireCollection, hackDateURL) {
+          var deferred = $q.defer();
+          var userId = $rootScope.userId; // $scope will trigger error
+          var url = hackDateURL+'profiles/'+userId+'/interests';
+          var ref = new Firebase(url);
 
-        $scope.profiles = [];
-        var iRef = new Firebase(hackDateURL+'profiles/'+$scope.user.id+'/interests');
-        iRef.once('value', function(snapshot) {
-          var interests = snapshot.val();
+          ref.once('value', function(snapshot) {
+            var interests = snapshot.val();
+            var done = 0;
+            var profiles = [];
 
-          _.each(interests, function(el) {
-            var ref = new Firebase(hackDateURL+'profiles/'+el);
-            angularFireCollection(ref, function(snapshot) {
-              var remote = snapshot.val();
-              console.log(remote);
-              _.extend(remote, {$id: parseInt(el)});
-              if(remote.interests.indexOf($scope.user.id) > -1) {
-                $scope.profiles.push(remote);
-              }
+            _.each(interests, function(el) {
+              var iRef = new Firebase(hackDateURL+'profiles/'+el);
+              iRef.once('value', function(snapshot) {
+                var remote = snapshot.val();
+
+                _.extend(remote, {$id: parseInt(el)}); // just in case
+                if(remote.interests.indexOf(userId) > -1) {
+                  profiles.push(remote);
+                }
+                deferred.resolve(profiles);
+                console.log(profiles);
+              });
             });
+            
           });
-        });
 
-        $scope.selected = [];
-        $scope.gridOptions = {
-          data: 'profiles',
-          selectedItems: $scope.selected,
-          columnDefs: [
+          return deferred.promise;
+        },
+
+        columnDefs: function() {
+          return [
             {
               field: '$id',
               displayName: 'ID'
@@ -466,45 +419,16 @@ app.config(function($stateProvider, $urlRouterProvider) {
               field: 'last_name',
               displayName: 'Last Name'
             }
-          ]
-        };
-
-        $scope.$on('ngGridEventData', function(){
-          _.each($scope.profiles, function(el, ind) {
-            var target_id = el.$id;
-
-            if($scope.hookUps.indexOf(target_id) > -1) {
-              $scope.gridOptions.selectRow(ind, true);
-            }
-          });
-        });
-
-        $scope.hook = function() {
-          var unselected = _.difference($scope.profiles, $scope.selected); 
-
-          _.each(unselected, function(el) {
-            var target_id = el.$id;
-
-            var ind = $scope.hookUps.indexOf(target_id)
-            if(ind > -1) {
-              $scope.hookUps.splice(ind, 1);
-            }
-          });
-
-          _.each($scope.selected, function(el) {
-            var target_id = el.$id;
-
-            console.log($scope.hookUps);
-            if($scope.hookUps.indexOf(target_id) < 0) {
-              $scope.hookUps.push(target_id);
-            }
-          });
-        };
-      }
+          ];
+        }
+      },
+      url: "/hook_ups",
+      templateUrl: "partials/hook_ups.html",
+      controller: 'MatchingCtrl'
     });
-  });
+});
 
-function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
+app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
   $scope.safeApply = function(fn) {
     var phase = this.$root.$$phase;
     if(phase == '$apply' || phase == '$digest') {
@@ -521,6 +445,7 @@ function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
 
   $scope.$on('angularFireAuth:login', function(evt, user) {
     $scope.user = user;
+    $rootScope.userId = $scope.user.id;
     $state.go($scope.toState);
   });
 
@@ -545,5 +470,39 @@ function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
       }
     }
   });
-}
+
+  $rootScope.$on('$stateChangeError', 
+  function(event, toState, toParams, fromState, fromParams, error){ 
+    console.log('$stateChangeError');
+    console.log(error);
+  });
+})
+.controller('MatchingCtrl', function($scope, angularFire, angularFireCollection, interestsRef, profiles, columnDefs, namespace) {
+
+  $scope.interests = [];
+  $scope.profiles = profiles;
+  $scope.gridOptions = {
+    data: 'profiles',
+    selectedItems: [],
+    columnDefs: columnDefs
+  };
+
+  $scope.$on('ngGridEventData', function(){
+    // Setup highlights for rows with interests
+    _.each($scope.profiles, function(el, ind) {
+      var target_id = el.$id;
+
+      angularFire(interestsRef, $scope, namespace).
+      then(function() {
+        if($scope.interests.indexOf(target_id) > -1) {
+          $scope.gridOptions.selectRow(ind, true);
+        }
+      });
+    });
+  });
+
+  $scope.apply = function() {
+    $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) { return el.$id; });
+  };
+});
 
