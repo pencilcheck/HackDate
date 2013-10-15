@@ -1,4 +1,4 @@
-var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives']);
+var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives', 'ngGrid']);
 
 app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
 
@@ -29,15 +29,15 @@ app.config(function($stateProvider, $urlRouterProvider) {
       views: {
         '': {
           templateUrl: 'partials/hackdate.html'
-        },
-        'profiles': {
-          templateUrl: 'partials/profiles.html',
-          controller: function($scope, angularFire, hackDateURL) {
-            var ref = new Firebase(hackDateURL + 'profiles');
-            $scope.profiles = [];
-            angularFire(ref, $scope, "profiles");
-          }
-        }
+        }//,
+        //'profiles': {
+          //templateUrl: 'partials/profiles.html',
+          //controller: function($scope, angularFire, hackDateURL) {
+            //var ref = new Firebase(hackDateURL + 'profiles');
+            //$scope.profiles = [];
+            //angularFire(ref, $scope, "profiles");
+          //}
+        //}
       }
     })
     .state('hackdate.register', {
@@ -248,6 +248,121 @@ app.config(function($stateProvider, $urlRouterProvider) {
           console.log(notification);
         });
       }
+    })
+    .state('hackdate.interested', {
+      url: "/interested",
+      templateUrl: "partials/interested.html",
+      controller: function($scope, angularFire, angularFireCollection, hackDateURL, Profiles) {
+        $scope.profiles = Profiles;
+        $scope.selected = [];
+        $scope.gridOptions = {
+          data: 'profiles',
+          selectedItems: $scope.selected,
+          columnDefs: [
+            {
+              field: '$id',
+              displayName: 'ID'
+            },
+            {
+              field: 'first_name',
+              displayName: 'First Name'
+            },
+            {
+              field: 'last_name',
+              displayName: 'Last Name'
+            },
+            {
+              field: 'birthday',
+              displayName: 'Birthday'
+            },
+            {
+              field: 'qas[0].question',
+              displayName: 'Question'
+            },
+            {
+              field: 'qas[0].answer',
+              displayName: 'Answer'
+            }
+          ]
+        };
+
+        $scope.$on('ngGridEventData', function(){
+          console.log('ngGridEventData');
+          _.each($scope.profiles, function(el, ind) {
+            var user_id = $scope.user.id;
+            var id = el.$id;
+            var url = hackDateURL+'profiles/'+user_id+'/interested';
+            console.log('user_id: ' + user_id);
+            console.log('target_id: ' + id);
+
+            var ref = new Firebase(url);
+            ref.once('value', function(snapshot) {
+              if(snapshot.val() && snapshot.val().indexOf(id) > -1) {
+                $scope.gridOptions.selectRow(ind, true);
+              }
+            });
+          });
+        });
+
+        $scope.apply = function() {
+          $scope.unselected = _.difference($scope.profiles, $scope.selected); 
+
+
+          _.each($scope.unselected, function(el) {
+            var target_id = el.$id;
+            var user_id = $scope.user.id;
+
+            // Remove target_id from interested list of current user
+            var interestedUrl = hackDateURL+'profiles/'+user_id+'/interested';
+            var interestedRef = new Firebase(interestedUrl);
+            $scope.uninterested = [];
+            angularFire(interestedRef, $scope, 'uninterested').
+            then(function() {
+              var ind = $scope.uninterested.indexOf(target_id)
+              if(ind > -1) {
+                $scope.uninterested.splice(ind, 1);
+              }
+            });
+
+            // Remove unselected user id from interesting list of others
+            var interestingUrl = hackDateURL+'profiles/'+target_id+'/interesting';
+            var interestingRef = new Firebase(interestingUrl);
+            $scope.uninteresting = [];
+            angularFire(interestingRef, $scope, 'uninteresting').
+            then(function() {
+              var ind = $scope.uninteresting.indexOf(user_id);
+              if(ind > -1) {
+                $scope.uninteresting.slice(ind, 1);
+              }
+            });
+          });
+
+          _.each($scope.selected, function(el) {
+            var target_id = el.$id;
+            var user_id = $scope.user.id;
+
+            // Push user id into interesting list of others
+            var ref = new Firebase(hackDateURL+'profiles/'+target_id+'/interesting');
+            $scope.interesting = [];
+            angularFire(ref, $scope, 'interesting').
+            then(function() {
+              if($scope.interesting.indexOf(user_id) < 0) {
+                $scope.interesting.push(user_id);
+              }
+            });
+
+            // Push target_id into interested list of current user
+            var ref = new Firebase(hackDateURL+'profiles/'+user_id+'/interested');
+            $scope.interested = [];
+            angularFire(ref, $scope, 'interested').
+            then(function() {
+              if($scope.interested.indexOf(target_id) < 0) {
+                $scope.interested.push(target_id);
+              }
+            });
+          });
+        };
+      }
     });
   });
 
@@ -268,7 +383,7 @@ function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
 
   $scope.$on('angularFireAuth:login', function(evt, user) {
     $scope.user = user;
-    $state.go('hackdate.profile');
+    $state.go($scope.toState);
   });
 
   $scope.$on('angularFireAuth:logout', function(evt) {
@@ -277,18 +392,18 @@ function MainCtrl($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
   });
 
   $scope.$on('angularFireAuth:error', function(evt, err) {
+    $scope.user = null;
+    $state.go('hackdate.login');
   });
+
+  $scope.toState = 'hackdate.login';
 
   $rootScope.$on('$stateChangeStart', 
   function(event, toState, toParams, fromState, fromParams){ 
-    console.log('changing to state: ');
-    console.log(toState);
     if(toState.name != 'hackdate.login' && toState.name != 'hackdate.register') {
       if(!$scope.user) {
         event.preventDefault();
-        // transitionTo() promise will be rejected with 
-        // a 'transition prevented' error
-        $state.go('hackdate.login');
+        $scope.toState = toState.name;
       }
     }
   });
