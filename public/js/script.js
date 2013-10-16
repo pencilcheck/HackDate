@@ -2,6 +2,7 @@ var userId = -1;
 var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives', 'ngGrid']);
 
 app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
+//app.value('profilesRef', new Firebase(hackDateURL + 'profiles'));
 
 app.directive('selectize', function($timeout) {
   return {
@@ -258,8 +259,18 @@ app.config(function($stateProvider, $urlRouterProvider) {
           return new Firebase(url);
         },
 
-        profiles: function(Profiles) {
-          return Profiles;
+        profiles: function($q, angularFireCollection, hackDateURL) {
+          var deferred = $q.defer();
+          angularFireCollection(new Firebase(hackDateURL + 'profiles'), function(snapshot) {
+            var profiles = snapshot.val();
+            profiles = _.map(profiles, function(el, ind) {
+              el.$id = parseInt(ind);
+              return el;
+            });
+
+            deferred.resolve(profiles);
+          });
+          return deferred.promise;
         },
 
         columnDefs: function() {
@@ -307,17 +318,16 @@ app.config(function($stateProvider, $urlRouterProvider) {
         profiles: function($rootScope, $q, angularFireCollection, hackDateURL) {
           var deferred = $q.defer();
           var userId = $rootScope.userId; // $scope will trigger error
-          var url = hackDateURL+'profiles/'+userId
-          var ref = new Firebase(url);
-
+          var ref = new Firebase(hackDateURL + 'profiles');
           ref.once('value', function(snapshot) {
-            var profile = snapshot.val();
-
-            var profiles = angularFireCollection(new Firebase(hackDateURL+'profiles'), function() {
-              deferred.resolve(_.filter(profiles, function(el) {
-                return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(parseInt(el.$id)) < 0;
-              }));
+            var profiles = snapshot.val();
+            profiles = _.map(profiles, function(el, ind) {
+              return _.extend(el, {$id: ind});
             });
+            var resolved = _.filter(profiles, function(el) {
+              return el.interests.indexOf(userId) > -1;
+            });
+            deferred.resolve(resolved);
           });
           return deferred.promise;
         },
@@ -417,58 +427,68 @@ app.config(function($stateProvider, $urlRouterProvider) {
     .state('hackdate.messages', {
       url: "/messages",
       templateUrl: "partials/messages.html",
-      controller: function($scope, angularFire, angularFireCollection, hackDateURL) {
-        var userId = parseInt($scope.user.id);
+      controller: function($scope, $rootScope, angularFire, angularFireCollection, hackDateURL) {
+        var userId = $rootScope.userId;
         var userRef = new Firebase(hackDateURL+'/profiles/'+userId+'/first_name');
         userRef.once('value', function(snapshot) {
           $scope.username = snapshot.val();
         });
 
         $scope.globalChannels = {};
-        angularFire(new Firebase(hackDateURL+'/channels'), $scope, 'globalChannels');
+        angularFire(new Firebase(hackDateURL+'/channels'), $scope, 'globalChannels').
+        then(function() {
+          $scope.globalChannelsReady = true;
+        });
 
         $scope.channels = {};
-        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/channels'), $scope, 'channels');
-
+        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/channels'), $scope, 'channels').
+        then(function() {
+          $scope.channelsReady = true;
+        });
 
         $scope.hookUps = [];
-        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/hook_ups'), $scope, 'hookUps');
+        angularFire(new Firebase(hackDateURL+'/profiles/'+userId+'/hook_ups'), $scope, 'hookUps').
+        then(function() {
+          $scope.hookUpsReady = true;
+        });
 
-        $scope.$watch('hookUps', function(newVal) {
+        $scope.$watch('hookUpsReady && channelsReady && globalChannelsReady', function(newVal) {
           // Making sure channels matches hook_ups
           // Create channel if not and delete if removed
+          if(newVal) {
+            _.each($scope.hookUps, function(hookUp) {
+              hookUp = parseInt(hookUp);
+              var remote = new Firebase(hackDateURL+'/profiles/'+hookUp+'/hook_ups');
+              remote.once('value', function(snapshot) {
+                var remoteHookUps = snapshot.val();
+                if(remoteHookUps.indexOf(userId) > -1) {
+                  var key = _.sortBy([hookUp, userId], function(el) { return el; }).toString();
+                  if(!_.has($scope.globalChannels, key)) {
+                    console.log('constructing channels');
+                    $scope.globalChannels[key] = {
+                      members: [hookUp, userId],
+                      messages: [
+                        {
+                          from: 'HackDate Admin',
+                          content: 'Thanks for using HackDate! <3',
+                          admin: true
+                        }
+                      ]
+                    };
 
-          _.each($scope.hookUps, function(hookUp) {
-            hookUp = parseInt(hookUp);
-            var remote = new Firebase(hackDateURL+'/profiles/'+hookUp+'/hook_ups');
-            remote.once('value', function(snapshot) {
-              var remoteHookUps = snapshot.val();
-              if(remoteHookUps.indexOf(userId) > -1) {
-                var key = _.sortBy([hookUp, userId], function(el) { return el; }).toString();
-                if(!_.has($scope.globalChannels, key)) {
-                  $scope.globalChannels[key] = {
-                    members: [hookUp, userId],
-                    messages: [
-                      {
-                        from: 'HackDate',
-                        content: 'Thanks for using HackDate! <3',
-                        admin: true
-                      }
-                    ]
-                  };
-
-                  angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
-                    key: key,
-                    title: 'Custom title'
-                  });
-                  angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
-                    key: key,
-                    title: 'Custom title'
-                  });
+                    angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
+                      key: key,
+                      title: 'Custom title'
+                    });
+                    angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
+                      key: key,
+                      title: 'Custom title'
+                    });
+                  }
                 }
-              }
+              });
             });
-          });
+          }
         });
 
         $scope.messageRef = null;
@@ -556,26 +576,29 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
 .controller('MatchingCtrl', function($scope, angularFire, angularFireCollection, interestsRef, profiles, columnDefs) {
 
   $scope.interests = [];
+  angularFire(interestsRef, $scope, 'interests').
+  then(function() {
+    // Setup highlights for rows with interests
+    for(var ind=0; ind<$scope.profiles.length; ind++) {
+      var el = $scope.profiles[ind];
+      var target_id = parseInt(el.$id);
+      if($scope.interests.indexOf(target_id) > -1) {
+        console.log('selecting');
+        $scope.gridOptions.selectItem(ind, true);
+      }
+    //});
+    }
+  });
+
   $scope.profiles = profiles;
   $scope.gridOptions = {
     data: 'profiles',
-    selectedItems: [],
+    selectedItems: $scope.interests,
     columnDefs: columnDefs
   };
 
-  $scope.$on('ngGridEventData', function(){
-    // Setup highlights for rows with interests
-    _.each($scope.profiles, function(el, ind) {
-      var target_id = parseInt(el.$id);
-
-      angularFire(interestsRef, $scope, 'interests').
-      then(function() {
-        if($scope.interests.indexOf(target_id) > -1) {
-          $scope.gridOptions.selectRow(ind, true);
-        }
-      });
-    });
-  });
+  //$scope.$on('ngGridEventData', function(){
+  //});
 
   $scope.apply = function() {
     $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) { return parseInt(el.$id); });
