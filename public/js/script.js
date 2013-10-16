@@ -315,7 +315,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
 
             var profiles = angularFireCollection(new Firebase(hackDateURL+'profiles'), function() {
               deferred.resolve(_.filter(profiles, function(el) {
-                return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(el.$id) < 0;
+                return el.interests.indexOf(user_id) > -1 && profile.interests.indexOf(parseInt(el.$id)) < 0;
               }));
             });
           });
@@ -440,54 +440,64 @@ app.config(function($stateProvider, $urlRouterProvider) {
 
           _.each($scope.hookUps, function(hookUp) {
             hookUp = parseInt(hookUp);
-            //TODO: make sure both select each other first
-            if(true) {
-              var key = _.sortBy([hookUp, userId], function(el) {return el;});
-              if(!_.has($scope.globalChannels, key)) {
-                $scope.globalChannels[key] = {
-                  members: [hookUp, userId],
-                  messages: [
-                    {
-                      from: 'HackDate',
-                      content: 'Thanks for using HackDate! <3',
-                      admin: true
-                    }
-                  ]
-                };
+            var remote = new Firebase(hackDateURL+'/profiles/'+hookUp+'/hook_ups');
+            remote.once('value', function(snapshot) {
+              var remoteHookUps = snapshot.val();
+              if(remoteHookUps.indexOf(userId) > -1) {
+                var key = _.sortBy([hookUp, userId], function(el) { return el; }).toString();
+                if(!_.has($scope.globalChannels, key)) {
+                  $scope.globalChannels[key] = {
+                    members: [hookUp, userId],
+                    messages: [
+                      {
+                        from: 'HackDate',
+                        content: 'Thanks for using HackDate! <3',
+                        admin: true
+                      }
+                    ]
+                  };
 
-                angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
-                  key: key,
-                  title: 'Custom title'
-                });
-                angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
-                  key: key,
-                  title: 'Custom title'
-                });
+                  angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
+                    key: key,
+                    title: 'Custom title'
+                  });
+                  angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
+                    key: key,
+                    title: 'Custom title'
+                  });
+                }
               }
-            }
+            });
           });
         });
 
+        $scope.messageRef = null;
+        $scope.selected = null;
+        $scope.channelSelect = {};
         $scope.select = function(channel) {
+          $scope.channelSelect = {};
+          $scope.channelSelect[channel.key] = true;
           $scope.selected = channel;
         }
 
         $scope.$watch('selected', function(newVal) {
-          console.log('selected');
-          console.log(newVal);
-          var key = newVal.key;
-          var ref = new Firebase(hackDateURL+'/channels/'+key+'/messages');
+          if(newVal) {
+            var key = newVal.key;
+            $scope.messageRef = new Firebase(hackDateURL+'/channels/'+key+'/messages');
 
-          $scope.messages = [];
-          angularFire(ref.limit(15), $scope, 'messages');
+            $scope.messages = [];
+            angularFire($scope.messageRef, $scope, 'messages');
+            //angularFire(ref.limit(15), $scope, 'messages');
 
-          $scope.addMessage = function() {
-            $scope.messages.push({
-              from: $scope.username,
-              content: $scope.message,
-              admin: false
-            });
-            $scope.message = "";
+            $scope.addMessage = function() {
+              $scope.messages.push({
+                from: $scope.username,
+                content: $scope.message,
+                admin: false
+              });
+              $scope.message = "";
+            }
+          } else {
           }
         });
       }
@@ -556,7 +566,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
   $scope.$on('ngGridEventData', function(){
     // Setup highlights for rows with interests
     _.each($scope.profiles, function(el, ind) {
-      var target_id = el.$id;
+      var target_id = parseInt(el.$id);
 
       angularFire(interestsRef, $scope, 'interests').
       then(function() {
@@ -568,7 +578,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
   });
 
   $scope.apply = function() {
-    $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) { return el.$id; });
+    $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) { return parseInt(el.$id); });
   };
 });
 

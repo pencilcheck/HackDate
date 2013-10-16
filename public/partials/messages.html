@@ -1,7 +1,7 @@
 <div class="well">
   <h2>Channels:</h2>
   <ul>
-    <li ng-repeat="channel in channels" ng-click="select(channel)">{{channel.title}}</li>
+    <li ng-repeat="channel in channels" ng-click="select(channel)" ng-class="{'selected': channelSelect[channel.key]}">{{channel.title}}</li>
 </div>
 <div class="well">
   <div ng-cloak ng-repeat="message in messages">
