@@ -1,0 +1,17 @@
+<div class="well">
+  Filter
+  <form>
+    <div ng-show="show.intention">
+      <label class="radio-inline">
+        <input type="radio" name="intentionRadios" value="Relationship" ng-model="filters.intention"> Relationship
+      </label>
+      <label class="radio-inline">
+        <input type="radio" name="intentionRadios" value="Friendship" ng-model="filters.intention"> Friendship
+      </label>
+      <label class="radio-inline">
+        <input type="radio" name="intentionRadios" value="Business Partner" ng-model="filters.intention"> Business Partner
+      </label>
+    </div>
+  </form>
+  <div ui-view></div>
+</div>

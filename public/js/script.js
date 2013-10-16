@@ -2,7 +2,6 @@ var userId = -1;
 var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives', 'ngGrid']);
 
 app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
-//app.value('profilesRef', new Firebase(hackDateURL + 'profiles'));
 
 app.directive('selectize', function($timeout) {
   return {
@@ -28,19 +27,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
   // Now set up the states
   $stateProvider
     .state('hackdate', {
-      views: {
-        '': {
-          templateUrl: 'partials/hackdate.html'
-        }//,
-        //'profiles': {
-          //templateUrl: 'partials/profiles.html',
-          //controller: function($scope, angularFire, hackDateURL) {
-            //var ref = new Firebase(hackDateURL + 'profiles');
-            //$scope.profiles = [];
-            //angularFire(ref, $scope, "profiles");
-          //}
-        //}
-      }
+      templateUrl: 'partials/hackdate.html'
     })
     .state('hackdate.register', {
       url: "/register",
@@ -251,8 +238,33 @@ app.config(function($stateProvider, $urlRouterProvider) {
         });
       }
     })
-    .state('hackdate.interests', {
+    .state('hackdate.filters', {
+      templateUrl: 'partials/filters.html',
+      controller: function($rootScope, $scope, $filter) {
+        $scope.show = {intention: true};
+        $scope.setIntention = function(value) {
+          $scope.show.intention = value;
+        };
+
+        $scope.filters = $rootScope.filters;
+        $scope.$watch('filters', function() {
+          $rootScope.filters = $scope.filters;
+        });
+
+        $scope.hackDateFilter = function(profile) {
+          console.log('hackDateFilter');
+          console.log(profile);
+          return profile.intention && profile.intention.indexOf($rootScope.filters.intention) > -1;
+        }
+      }
+    })
+    .state('hackdate.filters.interests', {
+      url: "/interests",
       resolve: {
+        helpText: function() {
+          return 'Listing all profiles';
+        },
+
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/interests'
@@ -300,15 +312,23 @@ app.config(function($stateProvider, $urlRouterProvider) {
               displayName: 'Answer'
             }
           ];
+        },
+
+        showIntention: function() {
+          return true;
         }
       },
-      url: "/interests",
-      templateUrl: "partials/interests.html",
+      templateUrl: "partials/grid.html",
       controller: 'MatchingCtrl'
     })
-    .state('hackdate.interested', {
+    .state('hackdate.filters.interested', {
       // Similar to interests, so users can express interests to, but only shows profiles that has expressed interests in the user
+      url: "/interested",
       resolve: {
+        helpText: function() {
+          return 'Listing all profiles that are interested in you';
+        },
+
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/interests'
@@ -325,7 +345,16 @@ app.config(function($stateProvider, $urlRouterProvider) {
               return _.extend(el, {$id: ind});
             });
             var resolved = _.filter(profiles, function(el) {
-              return el.interests.indexOf(userId) > -1;
+              var parsedInterests = el.interests;
+              // Update: Better to do it via hackDateFilter
+              // Filter by filters.intention
+              //var parsedInterests = _.filter(el.interests, function(item) {
+                //return item.intention && item.intention.indexOf($rootScope.filters.intention) > -1;
+              //});
+              parsedInterests = _.map(parsedInterests, function(item) {
+                return item.value;
+              });
+              return parsedInterests.indexOf(userId) > -1;
             });
             deferred.resolve(resolved);
           });
@@ -359,14 +388,22 @@ app.config(function($stateProvider, $urlRouterProvider) {
               displayName: 'Answer'
             }
           ];
+        },
+
+        showIntention: function() {
+          return true;
         }
       },
-      url: "/interested",
-      templateUrl: "partials/interested.html",
+      templateUrl: "partials/grid.html",
       controller: 'MatchingCtrl'
     })
-    .state('hackdate.hook_ups', {
+    .state('hackdate.filters.hook_ups', {
+      url: "/hook_ups",
       resolve: {
+        helpText: function() {
+          return 'Listing all interested profiles that are interested in you';
+        },
+
         interestsRef: function($rootScope, hackDateURL) {
           var userId = $rootScope.userId; // $scope will trigger error
           var url = hackDateURL+'profiles/'+userId+'/hook_ups'
@@ -381,23 +418,35 @@ app.config(function($stateProvider, $urlRouterProvider) {
 
           ref.once('value', function(snapshot) {
             var interests = snapshot.val();
+            // Update: Better to do it via hackDateFilter
+            // Filter by filters.intention
+            //var interests = _.filter(snapshot.val(), function(el) {
+              //return el.intention && el.intention.indexOf($rootScope.filters.intention) > -1;
+            //});
             var done = 0;
             var profiles = [];
 
             _.each(interests, function(el) {
-              var iRef = new Firebase(hackDateURL+'profiles/'+el);
+              var target_id = parseInt(el.value);
+              var iRef = new Firebase(hackDateURL+'profiles/'+target_id);
               iRef.once('value', function(snapshot) {
                 var remote = snapshot.val();
 
-                _.extend(remote, {$id: parseInt(el)}); // just in case
-                if(remote.interests.indexOf(userId) > -1) {
+                _.extend(remote, {$id: target_id}); // just in case
+                var parsedRemoteInterests = _.map(remote.interests, function(el) {
+                  return el.value;
+                });
+                if(parsedRemoteInterests.indexOf(userId) > -1) {
                   profiles.push(remote);
                 }
-                deferred.resolve(profiles);
+                console.log('resolve profiles');
                 console.log(profiles);
+                // Don't need to resolve that quickly
+                //deferred.resolve(profiles);
               });
             });
             
+            deferred.resolve(profiles);
           });
 
           return deferred.promise;
@@ -418,10 +467,13 @@ app.config(function($stateProvider, $urlRouterProvider) {
               displayName: 'Last Name'
             }
           ];
+        },
+
+        showIntention: function() {
+          return true;
         }
       },
-      url: "/hook_ups",
-      templateUrl: "partials/hook_ups.html",
+      templateUrl: "partials/grid.html",
       controller: 'MatchingCtrl'
     })
     .state('hackdate.messages', {
@@ -452,11 +504,21 @@ app.config(function($stateProvider, $urlRouterProvider) {
           $scope.hookUpsReady = true;
         });
 
-        $scope.$watch('hookUpsReady && channelsReady && globalChannelsReady', function(newVal) {
+        // A separate filters
+        $scope.filters = {};
+  
+        $scope.$watchCollection('[hookUpsReady, channelsReady, globalChannelsReady, filters]', function(newVal) {
           // Making sure channels matches hook_ups
+          // And selected intention
           // Create channel if not and delete if removed
           if(newVal) {
-            _.each($scope.hookUps, function(hookUp) {
+            var filteredHookUps = _.filter($scope.hookUps, function(el) {
+              return el.intention == $scope.filters.intention;
+            });
+            filteredHookUps = _.map(filteredHookUps, function(el) {
+              return el.value;
+            });
+            _.each(filteredHookUps, function(hookUp) {
               hookUp = parseInt(hookUp);
               var remote = new Firebase(hackDateURL+'/profiles/'+hookUp+'/hook_ups');
               remote.once('value', function(snapshot) {
@@ -466,6 +528,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
                   if(!_.has($scope.globalChannels, key)) {
                     console.log('constructing channels');
                     $scope.globalChannels[key] = {
+                      intention: $scope.filters.intention,
                       members: [hookUp, userId],
                       messages: [
                         {
@@ -477,10 +540,12 @@ app.config(function($stateProvider, $urlRouterProvider) {
                     };
 
                     angularFireCollection(new Firebase(hackDateURL+'/profiles/'+userId+'/channels')).add({
+                      intention: $scope.filters.intention,
                       key: key,
                       title: 'Custom title'
                     });
                     angularFireCollection(new Firebase(hackDateURL+'/profiles/'+hookUp+'/channels')).add({
+                      intention: $scope.filters.intention,
                       key: key,
                       title: 'Custom title'
                     });
@@ -536,6 +601,8 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     }
   };
 
+  $rootScope.filters = {intention: 'Relationship'};
+
   var hackDateRef = new Firebase(hackDateURL);
   angularFireAuth.initialize(hackDateRef, {scope: $scope, name: "user"});
 
@@ -573,35 +640,83 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     console.log(error);
   });
 })
-.controller('MatchingCtrl', function($scope, angularFire, angularFireCollection, interestsRef, profiles, columnDefs) {
+.controller('MatchingCtrl', function($rootScope, $scope, $filter, angularFire, angularFireCollection, interestsRef, profiles, columnDefs, helpText, showIntention) {
+
+  $scope.setIntention(showIntention);
+
+  $scope.helpText = helpText;
 
   $scope.interests = [];
   angularFire(interestsRef, $scope, 'interests').
   then(function() {
-    // Setup highlights for rows with interests
-    for(var ind=0; ind<$scope.profiles.length; ind++) {
-      var el = $scope.profiles[ind];
-      var target_id = parseInt(el.$id);
-      if($scope.interests.indexOf(target_id) > -1) {
-        console.log('selecting');
-        $scope.gridOptions.selectItem(ind, true);
-      }
-    //});
-    }
+    console.log('interests');
+    console.log($scope.interests);
   });
 
-  $scope.profiles = profiles;
+  $scope.selection = [];
+  $scope.$watch('selection', function(newVal) {
+    console.log('selection changed');
+    console.log($scope.selection);
+  }, true);
+
+  // To update selection
+  $scope.$watchCollection('[filters, interests, profiles]', function(newVal) {
+    if(newVal) {
+      console.log('interests watch');
+      $scope.selection.splice(0, $scope.selection.length);
+      _.each($scope.profiles, function(el, ind) {
+        $scope.gridOptions.selectItem(ind, false);
+
+        var target_id = parseInt(el.$id);
+
+        // Filtering interests to include only those with the same intention
+        var parsedInterests = _.filter($scope.interests, function(el) {
+          return el.intention == $rootScope.filters.intention;
+        });
+        // Then map it
+        var parsedInterests = _.map(parsedInterests, function(el) {
+          return el.value;
+        });
+        if(parsedInterests.indexOf(target_id) > -1) {
+          $scope.gridOptions.selectItem(ind, true);
+        }
+      });
+      console.log($scope.selection);
+    }
+  }, true);
+
+  $scope.remote = profiles;
+  //$scope.profiles = angular.copy($scope.remote);
+  // Filter by currently selected intention
+  $scope.profiles = _.filter($scope.remote, function(el) {
+    console.log('filtering profiles by intention');
+    console.log(el);
+    console.log($rootScope.filters);
+    return el.intention && el.intention.indexOf($rootScope.filters.intention) > -1;
+  });
+
   $scope.gridOptions = {
     data: 'profiles',
-    selectedItems: $scope.interests,
+    selectedItems: $scope.selection,
     columnDefs: columnDefs
   };
+
+  $scope.$watch('filters', function(newVal) {
+    console.log('filter has changed');
+    $scope.profiles = $filter('filter')($scope.remote, $scope.hackDateFilter);
+    console.log($scope.profiles);
+  }, true);
 
   //$scope.$on('ngGridEventData', function(){
   //});
 
   $scope.apply = function() {
-    $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) { return parseInt(el.$id); });
+    $scope.interests = _.map($scope.gridOptions.selectedItems, function(el) {
+      return {
+        intention: $rootScope.filters.intention,
+        value: parseInt(el.$id)
+      };
+    });
   };
 });
 
