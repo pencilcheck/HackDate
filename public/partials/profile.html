@@ -1,3 +1,4 @@
+<div class="login2">
 <h3>Profile</h3>
 <form novalidate role="form" class="form-horizontal">
 
@@ -12,9 +13,9 @@
   </div>
 
   <div class="form-group">
-    <label class="col-lg-2 control-label" for="profileSex" id="sexChoice">Sex:</label>
+    <label class="col-lg-2 control-label" for="profileSex">Sex:</label>
     <div class="col-lg-10">
-      <select class="form-control" ng-model="profile.sex" ng-options="sex for sex in sexes" ng-required="true" />
+      <select class="form-control" id="sexChoice" ng-model="profile.sex" ng-options="sex for sex in sexes" ng-required="true" />
     </div>
   </div>
 
@@ -70,13 +71,13 @@
     <div class="col-lg-10">
       <div class="row">
         <div class="col-lg-3">
-          <input type="text" class="form-control" ng-model="profile.headlight0" />
+          <input type="text" class="form-control 3words" ng-model="profile.headlight0" />
         </div>
         <div class="col-lg-3">
-          <input type="text" class="form-control" ng-model="profile.headlight1" />
+          <input type="text" id="3words" class="form-control" ng-model="profile.headlight1" />
         </div>
         <div class="col-lg-3">
-          <input type="text" class="form-control" ng-model="profile.headlight2" />
+          <input type="text" id="3words" class="form-control" ng-model="profile.headlight2" />
         </div>
       </div>
     </div>
@@ -101,3 +102,4 @@
   <button class="btn btn-default" ng-click="update(profile)">SAVE</button>
 
 </form>
+</div>

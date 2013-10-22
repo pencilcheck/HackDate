@@ -1,4 +1,6 @@
+<div class="login">
 <h3>Register</h3>
+<div id="mainbox">
 <form novalidate role="form" class="form-inline">
   <div class="form-group">
     <label class="sr-only" for="registerEmail">Email:</label>
@@ -8,6 +10,8 @@
     <label class="sr-only" for="registerPassword">Password:</label>
     <input type="password" class="form-control" id="registerPassword" placeholder="Password" ng-model="registration.password" />
   </div>
+  </div>
   <button class="btn btn-default" ng-click="reset()">RESET</button>
   <button class="btn btn-default" ng-click="register(registration)">REGISTER</button>
 </form>
+</div>
