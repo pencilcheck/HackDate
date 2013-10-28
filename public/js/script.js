@@ -256,7 +256,8 @@ app.config(function($stateProvider, $urlRouterProvider) {
             (
               ($scope.filters.location.me && $rootScope.latlng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), $rootScope.latlng) < parseInt($scope.filters.location.medistance)) ||
               ($scope.filters.location.place && $scope.profile.lat && $scope.profile.lng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), new google.maps.LatLng($scope.profile.lat, $scope.profile.lng)) < parseInt($scope.filters.location.placedistance))
-            )
+            ) &&
+            ($scope.filters.myage && (moment().year() - moment($scope.profile.birthday).year()) <= $scope.filters.myageoffset)
         };
       }
     })
@@ -619,6 +620,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
       male: true,
       female: true
     },
+    myageoffset: 5,
     location: {
       me: true,
       medistance: 5,
