@@ -1,16 +1,37 @@
 <div class="well">
-  Filter
-  <form>
+  <h2>Looking for ...</h2>
+  <form role="form">
     <div ng-show="show.intention">
-      <label class="radio-inline">
-        <input type="radio" name="intentionRadios" value="Relationship" ng-model="filters.intention"> Relationship
+      <div class="form-group">
+        <label class="radio-inline">
+          <input type="radio" name="intention" value="Relationship" ng-model="filters.intention"> Relationship
+        </label>
+        <label class="radio-inline">
+          <input type="radio" name="intention" value="Friendship" ng-model="filters.intention"> Friendship
+        </label>
+        <label class="radio-inline">
+          <input type="radio" name="intention" value="Business Partner" ng-model="filters.intention"> Business Partner
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="checkbox-inline">
+        <input type="checkbox" name="sex" value="M" ng-model="filters.sex.male"> Male
       </label>
-      <label class="radio-inline">
-        <input type="radio" name="intentionRadios" value="Friendship" ng-model="filters.intention"> Friendship
+      <label class="checkbox-inline">
+        <input type="checkbox" name="sex" value="F" ng-model="filters.sex.female"> Female
       </label>
-      <label class="radio-inline">
-        <input type="radio" name="intentionRadios" value="Business Partner" ng-model="filters.intention"> Business Partner
-      </label>
+    </div>
+    <div class="form-group">
+      <div ng-show="latlng">
+        <input type="checkbox" name="location" value="me" ng-model="filters.location.me"> Near me in
+        <input type="text" ng-model="filters.location.medistance"> km now
+      </div>
+    <div class="form-group">
+      <input type="checkbox" name="location" value="place" ng-model="filters.location.place"> Near my place
+    </div>
+    <div class="form-group">
+      <input type="checkbox" name="location" value="place" ng-model="filters.location.any"> Any
     </div>
   </form>
   <div ui-view></div>

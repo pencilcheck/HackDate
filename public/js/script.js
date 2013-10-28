@@ -87,7 +87,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
     .state('hackdate.profile', {
       url: "/profile",
       templateUrl: "partials/profile.html",
-      controller: function($scope, $http, $timeout, angularFire, hackDateURL, Profiles) {
+      controller: function($scope, $rootScope, $http, $timeout, angularFire, hackDateURL, Profiles) {
         console.log('accessing profile');
         console.log($scope.user);
         var profileUrl = hackDateURL + 'profiles/' + parseInt($scope.user.id);
@@ -112,6 +112,7 @@ app.config(function($stateProvider, $urlRouterProvider) {
 
           $scope.update = function(profile) {
             console.log('update');
+            $scope.geolocate(profile.location); // update latlng
             $scope.remote = angular.copy(profile);
             console.log($scope.remote);
           };
@@ -120,23 +121,19 @@ app.config(function($stateProvider, $urlRouterProvider) {
             $scope.profile = {};
           };
 
-          $scope.geolocate = function() {
-            if(navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(function(position) {
-                var latlng = position.coords.latitude+","+position.coords.longitude;
-                var url = 'http://maps.googleapis.com/maps/api/geocode/json?latlng='+latlng+'&sensor=true';
-
-                console.log(url);
-
-                $http.get(url).success(function(result) {
-                  console.log(result);
-                  // Could discuss on which components we need or let users to filter and to store
-                  // https://developers.google.com/maps/documentation/geocoding/#ReverseGeocoding
-                  $scope.profile.location = result.results[0].formatted_address;
-                });
+          $scope.geolocate = function(address) {
+            if(typeof address !== 'undefined') {
+              geocoding(address, function(latlng) {
+                $scope.profile.location = address;
+                $scope.profile.lat = latlng.lat();
+                $scope.profile.lng = latlng.lng();
               });
             } else {
-              console.log("Browser doesn't supports it, use other ways");
+              reverseGeocoding($rootScope.latlng, function(location) {
+                $scope.profile.location = location;
+                $scope.profile.lat = $rootScope.latlng.lat();
+                $scope.profile.lng = $rootScope.latlng.lng();
+              });
             }
           };
 
@@ -254,8 +251,10 @@ app.config(function($stateProvider, $urlRouterProvider) {
         $scope.hackDateFilter = function(profile) {
           console.log('hackDateFilter');
           console.log(profile);
-          return profile.intention && profile.intention.indexOf($rootScope.filters.intention) > -1;
-        }
+          return profile.intention && profile.intention.indexOf($scope.filters.intention) > -1 && 
+            (($scope.filters.sex.male && profile.sex == 'M') || ($scope.filters.sex.female && profile.sex == 'F')) &&
+            ($scope.filters.location.me && $rootScope.latlng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), $rootScope.latlng) < parseInt($scope.filters.location.medistance))
+        };
       }
     })
     .state('hackdate.filters.interests', {
@@ -590,6 +589,15 @@ app.config(function($stateProvider, $urlRouterProvider) {
 });
 
 app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, angularFireAuth) {
+  currentLocation(function(latlng) {
+    console.log('getting current location');
+    console.log(latlng);
+    if(typeof latlng !== 'undefined') {
+      $rootScope.latlng = latlng;    
+      $scope.latlng = latlng;    
+    }
+  });
+
   $scope.safeApply = function(fn) {
     var phase = this.$root.$$phase;
     if(phase == '$apply' || phase == '$digest') {
@@ -601,7 +609,20 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     }
   };
 
-  $rootScope.filters = {intention: 'Relationship'};
+  // Default values for the filter
+  $rootScope.filters = {
+    intention: 'Relationship',
+    sex: {
+      male: true,
+      female: true
+    },
+    location: {
+      me: true,
+      medistance: 5,
+      place: false,
+      any: false
+    }
+  };
 
   var hackDateRef = new Firebase(hackDateURL);
   angularFireAuth.initialize(hackDateRef, {scope: $scope, name: "user"});
@@ -622,7 +643,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
     $state.go('hackdate.login');
   });
 
-  $scope.toState = 'hackdate.login';
+  $scope.toState = 'hackdate.profile';
 
   $rootScope.$on('$stateChangeStart', 
   function(event, toState, toParams, fromState, fromParams){ 

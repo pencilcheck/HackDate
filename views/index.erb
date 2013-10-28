@@ -12,8 +12,8 @@
   <body ng-controller="MainCtrl">
     <div class="container">
       <h1>Welcome {{user.email}}</h1>
-      <a ui-sref="hackdate.register">Register</a> |
-      <a ui-sref="hackdate.login">Login</a> |
+      <a ng-hide="user" ui-sref="hackdate.register">Register</a> |
+      <a ng-hide="user" ui-sref="hackdate.login">Login</a> |
       <a ng-show="user" ui-sref="hackdate.logout">Logout</a> |
       <a ui-sref="hackdate.profile">Profile</a> |
       <a ui-sref="hackdate.filters.interests">Your Interests</a> |
@@ -43,8 +43,11 @@
     <script src="https://cdn.firebase.com/v0/firebase.js"></script>
     <script src="https://cdn.firebase.com/v0/firebase-simple-login.js"></script>
     <script src="https://cdn.firebase.com/libs/angularfire/0.3.0/angularfire.min.js"></script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA4MUQERWy6TZY4I143-Ck7PMscsPnQ9lo&sensor=true"></script>
     
     <script src="/js/selectize.js"></script>
+    <script src="/js/util.js"></script>
     <script src="/js/script.js"></script>
   </body>
 
