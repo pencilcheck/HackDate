@@ -28,10 +28,8 @@
         <input type="text" ng-model="filters.location.medistance"> km now
       </div>
     <div class="form-group">
-      <input type="checkbox" name="location" value="place" ng-model="filters.location.place"> Near my place
-    </div>
-    <div class="form-group">
-      <input type="checkbox" name="location" value="place" ng-model="filters.location.any"> Any
+      <input type="checkbox" name="location" value="place" ng-model="filters.location.place"> Near my place in
+        <input type="text" ng-model="filters.location.placedistance"> km
     </div>
   </form>
   <div ui-view></div>

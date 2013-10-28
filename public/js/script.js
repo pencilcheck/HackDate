@@ -253,7 +253,10 @@ app.config(function($stateProvider, $urlRouterProvider) {
           console.log(profile);
           return profile.intention && profile.intention.indexOf($scope.filters.intention) > -1 && 
             (($scope.filters.sex.male && profile.sex == 'M') || ($scope.filters.sex.female && profile.sex == 'F')) &&
-            ($scope.filters.location.me && $rootScope.latlng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), $rootScope.latlng) < parseInt($scope.filters.location.medistance))
+            (
+              ($scope.filters.location.me && $rootScope.latlng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), $rootScope.latlng) < parseInt($scope.filters.location.medistance)) ||
+              ($scope.filters.location.place && $scope.profile.lat && $scope.profile.lng && distanceBetween(new google.maps.LatLng(profile.lat, profile.lng), new google.maps.LatLng($scope.profile.lat, $scope.profile.lng)) < parseInt($scope.filters.location.placedistance))
+            )
         };
       }
     })
@@ -620,7 +623,7 @@ app.controller('MainCtrl', function($scope, $rootScope, $state, hackDateURL, ang
       me: true,
       medistance: 5,
       place: false,
-      any: false
+      placedistance: 5
     }
   };
 
