@@ -30,14 +30,13 @@
 
 #registerPassword {
   position: relative;
-  left: -5px;
-  width: 270px;
+  margin-top: 10px;
+  width: 238px;
 }
 #passwordwoohoo {
-  padding-top: 15px;
-  left: -5px;
-  position: relative; 
-  padding-bottom: 15px;
+  position: relative;
+  margin-top: 10px;
+  padding-top: 5px;
   width: 270px;
 }
 
