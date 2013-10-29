@@ -1,7 +1,8 @@
 var userId = -1;
 var app = angular.module('hackdate', ['ngRoute', 'ui.bootstrap', 'ui.router', 'firebase', '$strap.directives', 'ngGrid']);
 
-app.value('hackDateURL', 'https://hackdate.firebaseio.com/');
+app.value('hackDateURL', 'https://hackdateyuri.firebaseio.com/');
+//app.value('hackDateURL', 'hackdate.firebaseio.com/'); 
 
 app.directive('selectize', function($timeout) {
   return {
